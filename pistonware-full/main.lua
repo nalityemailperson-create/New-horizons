@@ -395,11 +395,6 @@ local function finishLoading()
 		--[[ A failed payload registers no game modules. Loading a profile against that empty
 		set would bring everything up on defaults, and the Save below would write those defaults
 		back -- deleting the user's real config. ]]
-		if shared.PistonwareSessionRejected then
-			failBoot('bedwars.session', 'session was not authorised')
-			bufferWarn('profile.session', 'session was not authorised -- leaving profiles untouched')
-			return
-		end
 		if shared.PistonwareBootFailed then return end
 		if not moduleSetComplete then
 			failBoot('modules.timeout', 'the game payload did not signal completion within 120 seconds')
@@ -522,7 +517,6 @@ local function finishLoading()
 								end)
 							end
 							crumb('queued script started in place '..tostring(game.PlaceId))
-							pcall(rawset, shared, 'PistonwareSessionRejected', nil)
 							pcall(rawset, shared, 'PistonwareLoaderBoot', nil)
 							local developerSource
 							pcall(function()
@@ -1163,10 +1157,6 @@ if not shared.VapeIndependent then
 		from the previous injection would tell waitForModules the payload had already finished
 		before it had even started re-registering. ]]
 		shared.PistonwareBedwarsLoaded = nil
-		--[[ Same reasoning for the refusal flag: bedwars.lua sets it from a fresh verdict every
-		run, but a game script that never sets it at all (the lobby) would otherwise inherit
-		a true left behind by a revoked BedWars session and refuse to save profiles there. ]]
-		shared.PistonwareSessionRejected = nil
 
 		local started = os.clock()
 		task.spawn(function()
