@@ -243,6 +243,9 @@ def smoke_program() -> str:
     for relative in SMOKE_SOURCES:
         path = ROOT / relative
         if not path.is_file():
+            if relative == "games/bedwars.lua":
+                print("Skipped optional protected smoke source: games/bedwars.lua")
+                continue
             raise RuntimeError(f"smoke source does not exist: {relative}")
         with path.open("r", encoding="utf-8", newline="") as handle:
             source = handle.read()

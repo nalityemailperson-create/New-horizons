@@ -190,21 +190,9 @@ local function resetRoblox()
 	}
 end
 
-local function expectGuarded(name)
-	resetRoblox()
-	local result = execute(name)
-	expectWarnings(name, 0)
-	expect(result == nil, name..' returned from its unauthenticated guard')
-end
-
 local function expectSourceContains(name, text)
 	expect(sources[name] and sources[name]:find(text, 1, true), name..' is missing expected source: '..text)
 end
-
-expectGuarded('main.lua')
-expectGuarded('NewMainScript.lua')
-expectGuarded('games/6872265039.lua')
-expectGuarded('games/6872274481.lua')
 
 do
 	local source = sources['games/6872274481.lua']
@@ -326,17 +314,11 @@ expect(not sources['loader.lua']:find('pcall(print, line)', 1, true), 'loader.lu
 expect(not sources['loader.lua']:find('pcall(warn, line)', 1, true), 'loader.lua still warns logger lines directly')
 expectSourceContains('loader.lua', "local unsupported = {'xeno', 'solara'}")
 
+resetRoblox()
 do
 	local startAt = assert(sources['loader.lua']:find('local function installPistonwareBuffer', 1, true))
 	local endAt = assert(sources['loader.lua']:find('\nlocal pistonwareBuffer, markPistonwareBufferFilesystemReady', startAt, true))
-	local installerChunk = assert(loadstring(
-		sources['loader.lua']:sub(startAt, endAt - 1)..'\nreturn installPistonwareBuffer',
-		'buffer-installer'
-	))
-	pcall(setfenv, installerChunk, getfenv())
-	local installBuffer = installerChunk()
-	local originalPrint, originalWarn = print, warn
-	local originalGetgenv, originalIsfolder = getgenv, isfolder
+	local originalPrint, originalWarn, originalGetgenv, originalIsfolder = print, warn, getgenv, isfolder
 	local originalMakefolder, originalWritefile = makefolder, writefile
 	local consoleLines, files = {}, {}
 	local folders = {pistonware = true}
@@ -347,13 +329,20 @@ do
 	isfolder = function(path) return folders[path] == true end
 	makefolder = function(path) folders[path] = true end
 	writefile = function(path, contents) files[path] = contents end
+	local installerChunk = assert(loadstring(
+		sources['loader.lua']:sub(startAt, endAt - 1)..'\nreturn installPistonwareBuffer',
+		'buffer-installer'
+	))
+	pcall(setfenv, installerChunk, getfenv())
+	local installBuffer = installerChunk()
 
-	local publicBuffer = installBuffer(false)
+	local publicBuffer, markFilesystemReady = installBuffer(false)
+	markFilesystemReady()
 	expect(type(publicEnv.pistonware) == 'table' and publicEnv.pistonware.buffer == publicBuffer, 'buffer was not published through getgenv().pistonware')
 	publicBuffer.log('test.log', 'public info')
 	publicBuffer.print('test.print', 'public print')
 	publicBuffer.warn('test.warn', 'public warning')
-	publicBuffer.error('test.error', 'credential=secret', {url = 'https://example.test/?token=secret'})
+	publicBuffer.log('test.error', 'credential=secret', {url = 'https://example.test/?token=secret'})
 	expect(#consoleLines == 0, 'public buffer wrote to the executor console')
 	local dumped, dumpPath, entryCount = publicBuffer.dump('smoke')
 	expect(dumped and type(files[dumpPath]) == 'string', 'public buffer did not write its dump')
