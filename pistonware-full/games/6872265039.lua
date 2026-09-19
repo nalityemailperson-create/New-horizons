@@ -10,8 +10,6 @@ local function bufferCall(method, event, message, details)
 	if shared.PistonwareDeveloper == true then warn('[pistonware] '..tostring(message)) end
 end
 
-shared.PistonwareAuthenticated = true
-
 local function errorTrace(err)
 	local traceback
 	pcall(function()

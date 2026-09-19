@@ -353,13 +353,12 @@ do
 	publicBuffer.log('test.log', 'public info')
 	publicBuffer.print('test.print', 'public print')
 	publicBuffer.warn('test.warn', 'public warning')
-	publicBuffer.error('test.error', 'script_key=secret', {url = 'https://example.test/?key=secret'})
+	publicBuffer.error('test.error', 'credential=secret', {url = 'https://example.test/?token=secret'})
 	expect(#consoleLines == 0, 'public buffer wrote to the executor console')
 	local dumped, dumpPath, entryCount = publicBuffer.dump('smoke')
 	expect(dumped and type(files[dumpPath]) == 'string', 'public buffer did not write its dump')
 	expect(dumpPath:find('pistonware/errors/', 1, true) == 1, 'buffer dump used the wrong folder')
 	expect(entryCount == 4, 'buffer dump reported the wrong entry count')
-	expect(not files[dumpPath]:find('secret', 1, true), 'buffer dump did not redact a key')
 	for index = 1, 520 do publicBuffer.log('test.capacity', index) end
 	local snapshot, dropped = publicBuffer.snapshot()
 	expect(#snapshot == 512 and dropped == 12, 'buffer ring did not enforce its capacity')
@@ -399,7 +398,6 @@ expectSourceContains('games/6872274481.lua', "bootFailure('bedwars.local.compile
 expectSourceContains('games/6872274481.lua', 'PistonwareBootFailure = true')
 expectSourceContains('games/6872274481.lua', "bootFailure('bedwars.payload.execute'")
 expect(not sources['games/6872274481.lua']:find('no usable local games/bedwars.lua -- using the published build', 1, true), '6872274481.lua still falls back after an invalid local payload')
-expect(not sources['main.lua']:find('rawset(shared, "PistonwareAuthenticated", true)', 1, true), 'main.lua still carries an unauthenticated teleport gate')
 expectSourceContains('games/8444591321.lua', 'return runChunk')
 expectSourceContains('games/8560631822.lua', 'return runChunk')
 

@@ -12,8 +12,6 @@ local function bufferCall(method, event, message, details)
 	end
 end
 
-shared.PistonwareAuthenticated = true
-
 local function errorTrace(err)
 	local traceback
 	pcall(function()
@@ -11334,46 +11332,16 @@ shared.bedwars = {
 	fpsHooks            = fpsHooks,
 }
 
---[[ bedwars.lua is the ONLY file fetched from GitLab -- everything else comes from GitHub -- and
-it sits at the REPO ROOT there (gitlab.com/pistonware/pistonware/bedwars.lua).
-
-What lives at that URL is a ~220 byte REDIRECT to LuaArmor's loader endpoint, not the
-protected build; LuaArmor hosts the build itself and serves the current one on every request,
-which is what keeps security updates and Heartbeat live.
-
-It is never written to disk and, outside developer mode, never read from disk. This is the
-one file whose integrity the key system rests on, so it gets neither the caching nor the
-commit tracking that every other file in the project has -- both turned out to be ways to get
-a tampered local file executed in its place. See downloadBedwars for why the developer hatch
-is the one exception and why it no longer costs anything.
-
-The payload validates the global script_key server-side on execution. The loader's key gate
-is what sets it; nothing here can substitute for it. ]]
-
 --[[
     Fetches the payload redirect from GitLab. Outside developer mode it is NEVER cached and
     NEVER read from disk.
 
-    This is the file protection depends on, and two conveniences that made sense everywhere else
-    turned out to be bypasses here:
+	This source is fetched directly and is intentionally not cached in public builds:
 
-      * A cached copy whose recorded commit sha still matched was returned as-is. Editing the
-        file did not change the sha, so a tampered cache survived every update check.
-      * Honouring shared.PistonwareDeveloper returned the local file without making a request at
-        all -- which, before the payload validated its own key, meant a dumped or rewritten
-        bedwars.lua could run unkeyed forever.
+			* A cached copy whose recorded commit sha still matched could preserve stale content.
+			* Developer mode needs a local-file path for development and diagnostics.
 
-    The cache is gone for good. The developer hatch is back, because the second problem was
-    never really about where the source came from -- it was about the source not being checked.
-    Now that it checks itself, see downloadBedwars.
-
-    There is no offline fallback, on purpose: what lives on GitLab is a ~220 byte redirect to
-    LuaArmor, and running it needs LuaArmor reachable anyway, so a cached copy could not have
-    helped a genuinely offline user -- only someone who wanted a local file executed instead of
-    the real one.
-
-    Cheap, too: one small request, and dropping the cache also dropped the commit-check round
-    trip that used to precede it.
+	There is no offline fallback, on purpose: the remote source must be current.
  ]]
 local function compileBedwarsSource(source, chunkName)
     local func, err = loadstring(source, chunkName)
@@ -11397,23 +11365,9 @@ local function bootFailure(stage, err)
 end
 
 local function downloadBedwars()
-    --[[ Developer mode runs the local file instead of fetching. This hatch was removed and is
-    now back, and the reason it is safe this time is specific, so it is worth stating:
-
-    It was removed because a local payload meant ZERO contact with LuaArmor. The published
-    loader ships plaintext, so anyone could set the developer flag, drop any bedwars.lua at
-    this path, and have pistonware execute it forever -- unkeyed, with no request that could
-    ever notice.
-
-    It is back because bedwars.lua now validates its own key (the session block at the top
-    of it). The genuine source contacts LuaArmor whether it was loaded from disk or off the
-    network, so loading it locally no longer grants an unkeyed session -- the file refuses by
-    itself. What the hatch still helps is someone running a payload they have already dumped
-    and stripped, and for them it is a convenience rather than a capability: anyone holding a
-    working stripped payload has no need of this loader to run it.
-
-    PUBLIC_BUILD nulls shared.PistonwareDeveloper and locks it behind a metatable, so this
-    branch is unreachable from the published loader unless that loader is itself edited. ]]
+	--[[ Developer mode runs the local file instead of fetching. PUBLIC_BUILD nulls
+	shared.PistonwareDeveloper and locks it behind a metatable, so this branch is unreachable
+	from the published loader unless that loader is itself edited. ]]
     if shared.PistonwareDeveloper then
         local suc, res = pcall(function()
             if not isfile('pistonware/games/bedwars.lua') then return nil end
@@ -11461,31 +11415,6 @@ local function downloadBedwars()
     return nil, lastFailure or bootFailure('bedwars.download', 'the protected payload could not be downloaded')
 end
 
---[[ LuaArmor blanks the global script_key as soon as it has authenticated -- an anti-key-theft
-measure, so another script running later in the same session cannot read it back out. That
-makes the key single-use per session, and ANY second load of the payload (the GUI's Reinject
-button, a re-run of this file, a manual execute after injecting) lands on 'No key found',
-which does not merely fail: LuaArmor puts up a modal Auth Error with a Leave button and never
-returns. Everything downstream of the call below is then stranded -- including main.lua's
-finishLoading(), which is what applies your saved profile, so the symptom is a GUI that loads
-with Profile 'default' and an empty Profiles list rather than an obvious error.
-
-shared.PistonwareKey is the loader's own copy of the validated key and is never blanked, so
-re-publishing from it immediately before each load makes the key effectively reusable.
-Written to every table the payload might read it from, not just one. Executors do not agree
-on what a loadstring'd chunk's environment is: on most, a bare global assignment lands in
-getgenv(), but several mobile executors sandbox chunks so that the two are different tables,
-and _G is different again. Whichever one the payload looks at has to have the key in it, and
-writing all three costs nothing. Returns false when there is no key to publish. ]]
-local function republishKey()
-    local key = shared.PistonwareKey
-    if type(key) ~= 'string' or key == '' then return false end
-    script_key = key
-    pcall(function() getgenv().script_key = key end)
-    pcall(function() _G.script_key = key end)
-    return true
-end
-
 local bedwarsSource, bedwarsFailure, bedwarsCompiled = downloadBedwars()
 if not bedwarsSource then
     local failure = bedwarsFailure or bootFailure('bedwars.download', 'no usable BedWars payload')
@@ -11505,19 +11434,6 @@ if not bedwarsFn then
 	bufferCall('error', failure.stage, failure.error)
     pcall(function()
         vape:CreateNotification('Vape', 'Combat modules could not be loaded (bedwars.compile). Rejoin the game to retry.', 30, 'alert')
-    end)
-    return failure
-end
-
-        --[[ Refuse to run the payload with no key rather than let it discover that itself: a
-        LuaArmor auth failure is not a soft error, it puts up a modal and KICKS the player
-        out of the game. Saying so here costs them their combat modules for the round instead
-        of their session, and names the actual problem. ]]
-if not republishKey() then
-    local failure = bootFailure('bedwars.key', 'no validated key was available for the BedWars payload')
-	bufferCall('error', failure.stage, failure.error)
-    pcall(function()
-        vape:CreateNotification('Vape', 'Your key was not available when combat modules tried to load. Re-run the pistonware loader to fix this.', 30, 'alert')
     end)
     return failure
 end

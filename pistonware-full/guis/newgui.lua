@@ -618,7 +618,7 @@ do
 			local data
 			for attempt = 1, 4 do
 				local success, res = pcall(function()
-					return pistonwareHttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/main/'..relPath, true, attempt)
+					return pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/main/pistonware-full/'..relPath, true, attempt)
 				end)
 				if success and res and res ~= '' and res ~= '404: Not Found' then
 					data = res
@@ -1799,38 +1799,6 @@ function vape:LoadGUI()
 	scarcitybanner.TextScaled = true
 	scarcitybanner.TextStrokeTransparency = 0.5
 	scarcitybanner.Parent = clickgui
-	-- Time left on the key, from the expiry the loader stored. Developer runs count as lifetime;
-	-- keeps the discord line when an older loader stored nothing.
-	local function keyDuration()
-		local expire = tonumber(shared.PistonwareKeyExpire)
-		if not expire and shared.PistonwareDeveloper then expire = -1 end
-		if not expire then return nil end
-		local prefix = 'Thank you for choosing Pistonware. Remaining Key Duration: '
-		if expire < 0 then return 'Thank you for choosing Pistonware.' end
-		local left = math.max(expire - os.time(), 0)
-		if left == 0 then return 'Thank you for choosing Pistonware. Your key has expired.' end
-		local function unit(n, word)
-			return n..' '..word..(n == 1 and '' or 's')
-		end
-		local days, hours, minutes = left // 86400, left % 86400 // 3600, left % 3600 // 60
-		local parts = {}
-		if days > 0 then table.insert(parts, unit(days, 'day')) end
-		if hours > 0 then table.insert(parts, unit(hours, 'hour')) end
-		if days == 0 and (minutes > 0 or hours == 0) then table.insert(parts, unit(math.max(minutes, 1), 'minute')) end
-		return prefix..table.concat(parts, ', ')
-	end
-	local function refreshDuration()
-		local text = keyDuration()
-		if text then scarcitybanner.Text = text end
-	end
-	refreshDuration()
-	clickgui:GetPropertyChangedSignal('Visible'):Connect(refreshDuration)
-	task.spawn(function()
-		while scarcitybanner.Parent do
-			task.wait(30)
-			if clickgui.Visible then refreshDuration() end
-		end
-	end)
 	local modal = Instance.new('TextButton')
 	modal.BackgroundTransparency = 1
 	modal.Modal = true
@@ -2004,12 +1972,12 @@ function vape:LoadGUI()
 
 	-- Same reinject route the buttons in Settings > General use: the developer build lives on
 	-- disk under its own name and must never be fetched from GitHub, and every other path goes
-	-- back through the loader so the key gate re-runs.
+	-- back through the loader so the normal boot sequence runs.
 	local function reinjectThroughLoader()
 		if shared.PistonwareDeveloper and isfile('pistonware/loaderdev.lua') then
 			loadstring(readfile('pistonware/loaderdev.lua'), 'loader')()
 		else
-			loadstring(pistonwareHttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/main/loader.lua', true), 'loader')()
+			loadstring(pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/main/pistonware-full/loader.lua', true), 'loader')()
 		end
 	end
 
@@ -2032,7 +2000,7 @@ function vape:LoadGUI()
 
 	local function latestProfileCommit()
 		local suc, res = pcall(function()
-			return pistonwareHttpGet('https://api.github.com/repos/themagicpiston/pistonware/commits?path=profiles&sha=main&per_page=1', true)
+			return pistonwareHttpGet('https://api.github.com/repos/nalityemailperson-create/New-horizons/commits?path=pistonware-full/profiles&sha=main&per_page=1', true)
 		end)
 		if not (suc and res and res ~= '' and res ~= '404: Not Found') then return nil end
 		local ok, body = pcall(function()
@@ -2096,7 +2064,7 @@ function vape:LoadGUI()
 		local content
 		for attempt = 1, 4 do
 			local suc, res = pcall(function()
-				return pistonwareHttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/'..(commit or 'main')..'/'..relPath, true, attempt)
+				return pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/'..(commit or 'main')..'/pistonware-full/'..relPath, true, attempt)
 			end)
 			if suc and res and res ~= '' and res ~= '404: Not Found' then
 				content = res
@@ -2118,7 +2086,7 @@ function vape:LoadGUI()
 	local function downloadProfiles(commit)
 		local reqSuc, res = pcall(function()
 			-- listing pinned too, so it can never describe a different commit than the files below
-			return pistonwareHttpGet('https://api.github.com/repos/themagicpiston/pistonware/contents/profiles'..(commit and ('?ref='..commit) or ''), true)
+			return pistonwareHttpGet('https://api.github.com/repos/nalityemailperson-create/New-horizons/contents/pistonware-full/profiles'..(commit and ('?ref='..commit) or ''), true)
 		end)
 		if not (reqSuc and res and res ~= '' and res ~= '404: Not Found') then
 			return nil, 'Profile sync failed (could not reach GitHub).'
@@ -3418,14 +3386,11 @@ function vape:LoadGUI()
 			end
 	
 			shared.vapereload = true
-			--[[ Back through the pistonware loader, which re-runs the key gate. That is deliberate:
-			shared.PistonwareAuthenticated is cleared and re-derived on every run, so a reinject
-			revalidates rather than inheriting a flag. The developer loader lives on disk under a
-			different name and must never be fetched from GitHub -- it uses the same key gate. ]]
+			--[[ Back through the pistonware loader so the normal boot sequence runs. ]]
 			if shared.PistonwareDeveloper and isfile('pistonware/loaderdev.lua') then
 				runChunk(readfile('pistonware/loaderdev.lua'), 'loader')
 			else
-				runChunk(pistonwareHttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/main/loader.lua', true), 'loader')
+				runChunk(pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/main/pistonware-full/loader.lua', true), 'loader')
 			end
 		end,
 		Tooltip = 'This will set your profile to the default settings of Vape'
@@ -3443,14 +3408,11 @@ function vape:LoadGUI()
 		Name = 'Reinject',
 		Function = function()
 			shared.vapereload = true
-			--[[ Back through the pistonware loader, which re-runs the key gate. That is deliberate:
-			shared.PistonwareAuthenticated is cleared and re-derived on every run, so a reinject
-			revalidates rather than inheriting a flag. The developer loader lives on disk under a
-			different name and must never be fetched from GitHub -- it uses the same key gate. ]]
+			--[[ Back through the pistonware loader so the normal boot sequence runs. ]]
 			if shared.PistonwareDeveloper and isfile('pistonware/loaderdev.lua') then
 				runChunk(readfile('pistonware/loaderdev.lua'), 'loader')
 			else
-				runChunk(pistonwareHttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/main/loader.lua', true), 'loader')
+				runChunk(pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/main/pistonware-full/loader.lua', true), 'loader')
 			end
 		end,
 		Tooltip = 'Reloads vape for debugging purposes'
@@ -3459,7 +3421,7 @@ function vape:LoadGUI()
 	general:CreateButton({
 		Name = 'Reinstall',
 		Function = function()
-			runChunk(pistonwareHttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/refs/heads/main/reinstall.lua', true), 'reinstall')
+				runChunk(pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/refs/heads/main/pistonware-full/reinstall.lua', true), 'reinstall')
 		end,
 		Tooltip = 'Uninjects, deletes the pistonware folder and downloads everything again'
 	})

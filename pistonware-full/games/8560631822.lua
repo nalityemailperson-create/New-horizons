@@ -36,7 +36,7 @@ elseif not shared.PistonwareDeveloper then
 		local suc, res = pcall(function()
 			local rawUrl = shared.PistonwareRawUrl
 			return type(rawUrl) == 'function' and game:HttpGet(rawUrl('games/6872274481.lua'), true)
-				or game:HttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/main/games/6872274481.lua', true)
+				or game:HttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/main/pistonware-full/games/6872274481.lua', true)
 		end)
 		if suc and res and res ~= '' and res ~= '404: Not Found' then
 			content = res

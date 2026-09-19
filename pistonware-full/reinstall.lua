@@ -53,7 +53,7 @@ task.wait(2)
 shared.VapeSmoothBoot = true
 
 local suc, res = pcall(function()
-	return game:HttpGet('https://raw.githubusercontent.com/themagicpiston/pistonware/refs/heads/main/loader.lua', true)
+	return game:HttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/refs/heads/main/pistonware-full/loader.lua', true)
 end)
 if not suc or not res or res == '' or res == '404: Not Found' then
 	bufferRaise('reinstall.download', 'failed to download loader.lua - '..tostring(res), 0)
