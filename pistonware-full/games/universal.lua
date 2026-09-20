@@ -8917,6 +8917,11 @@ end)
 run(function()
 	local FPSUnlocker
 	local Cap
+	local previousCap
+	if getfpscap then
+		local ok, value = pcall(getfpscap)
+		previousCap = ok and tonumber(value) or nil
+	end
 
 	FPSUnlocker = vape.Legit:CreateModule({
 		Name = 'FPS Unlocker',
@@ -8930,14 +8935,14 @@ run(function()
 				setfpscap(Cap.Value)
 			else
 				if setfpscap then
-					setfpscap(60)
+					setfpscap(previousCap or 60)
 				end
 			end
 		end,
 		ExtraText = function()
 			return tostring(Cap.Value)
 		end,
-		Tooltip = 'Raises the framerate cap while enabled, restores 60 when turned off.'
+		Tooltip = 'Raises the framerate cap while enabled, and restores the cap you had when turned off.'
 	})
 	Cap = FPSUnlocker:CreateSlider({
 		Name = 'FPS Cap',
