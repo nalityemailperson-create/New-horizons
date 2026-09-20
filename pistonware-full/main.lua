@@ -77,9 +77,6 @@ local function rewriteReleaseUrl(url)
 		local ok, rewritten = pcall(adapter, value)
 		if ok and type(rewritten) == 'string' then return rewritten end
 	end
-	value = value:gsub('https://gitlab%.com/pistonware/pistonware/%-/raw/main/', function()
-		return 'https://gitlab.com/pistonware/pistonware/-/raw/'..(release.branch or 'main')..'/'
-	end)
 	value = value:gsub('([?&]sha=)main', '%1'..ref)
 	value = value:gsub('([?&]ref=)main', '%1'..ref)
 	return value
@@ -92,12 +89,7 @@ local function projectRawUrl(path, ref)
 	return 'https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/'..(ref or releaseRef())..'/pistonware-full/'..path
 end
 
-local function protectedRawUrl(ref)
-	return 'https://gitlab.com/pistonware/pistonware/-/raw/'..(ref or release.branch or 'main')..'/bedwars.lua'
-end
-
 shared.PistonwareRawUrl = projectRawUrl
-shared.PistonwareProtectedRawUrl = protectedRawUrl
 shared.PistonwareChannel = release.channel or 'main'
 
 local function cacheAllowed()
@@ -154,15 +146,6 @@ end
 local function pistonwareHttpGet(url, nocache, attempt)
 	url = rewriteReleaseUrl(url)
 	local adapter = shared.PistonwareDevHttpGet
-	if type(adapter) == 'function' then
-		return adapter(url, nocache, attempt)
-	end
-	return game:HttpGet(url, nocache)
-end
-
-local function pistonwareProtectedHttpGet(url, nocache, attempt)
-	url = rewriteReleaseUrl(url)
-	local adapter = shared.PistonwareDevProtectedHttpGet
 	if type(adapter) == 'function' then
 		return adapter(url, nocache, attempt)
 	end
@@ -289,19 +272,12 @@ local function downloadFile(path, func, chunkName)
 		return func and func(path) or body
 	end
 	if not (cacheAllowed() and hasContent(path, chunkName)) then
-		--[[ bedwars.lua only exists in the GitLab repo (kept separate/obfuscated there), at that
-		repo's ROOT even though it caches locally under games/; everything else lives in the
-		GitHub repo. ]]
 		local relPath = select(1, path:gsub('pistonware/', ''))
-		local isBedwars = relPath == 'games/bedwars.lua'
 		--[[ Retried a few times: raw file hosts intermittently fail, returning an empty body that
 		would otherwise get cached as a corrupt/empty file. ]]
 		local content
 		for attempt = 1, 4 do
 			local suc, res = pcall(function()
-				if isBedwars then
-					return pistonwareProtectedHttpGet(protectedRawUrl(), true, attempt)
-				end
 				return pistonwareHttpGet(projectRawUrl(relPath), true, attempt)
 			end)
 			--[[ For .lua files, compile-check downloads so an outage page is not cached. ]]

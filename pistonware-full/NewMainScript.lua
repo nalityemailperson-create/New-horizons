@@ -22,14 +22,6 @@ local function pistonwareHttpGet(url, nocache, attempt)
 	return game:HttpGet(url, nocache)
 end
 
-local function pistonwareProtectedHttpGet(url, nocache, attempt)
-	local adapter = shared.PistonwareDevProtectedHttpGet
-	if type(adapter) == 'function' then
-		return adapter(url, nocache, attempt)
-	end
-	return game:HttpGet(url, nocache)
-end
-
 --[[ As in `main.lua`, `isfile` alone is insufficient: every
 executor's real isfile reports a zero-byte file as PRESENT, so a write cut short by a
 cancel, crash or teleport leaves a truncated file that cache-first logic then skips
@@ -54,19 +46,12 @@ local function downloadFile(path, func)
 		return func and func(path) or body
 	end
 	if not hasContent(path) then
-		--[[ bedwars.lua only exists in the GitLab repo (kept separate/obfuscated there), at that
-		repo's ROOT even though it caches locally under games/; everything else lives in the
-		GitHub repo. ]]
 		local relPath = select(1, path:gsub('pistonware/', ''))
-		local isBedwars = relPath == 'games/bedwars.lua'
 		--[[ The request is retried because raw file hosts can intermittently return an empty body that
 		would otherwise get cached as a corrupt/empty file. ]]
 		local content
 		for attempt = 1, 4 do
 			local suc, res = pcall(function()
-				if isBedwars then
-					return pistonwareProtectedHttpGet('https://gitlab.com/pistonware/pistonware/-/raw/main/bedwars.lua', true, attempt)
-				end
 				return pistonwareHttpGet('https://raw.githubusercontent.com/nalityemailperson-create/New-horizons/main/pistonware-full/'..relPath, true, attempt)
 			end)
 			if suc and res and res ~= '' and res ~= '404: Not Found' then

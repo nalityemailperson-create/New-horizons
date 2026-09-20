@@ -615,15 +615,10 @@ local function projectPath(path)
 	return path:sub(1, #PROJECT_ROOT) == PROJECT_ROOT and path:sub(#PROJECT_ROOT + 1) or path
 end
 
-local function protectedRawUrl(ref)
-	return 'https://gitlab.com/pistonware/pistonware/-/raw/'..(ref or release.branch)..'/bedwars.lua'
-end
-
 local function rewriteProjectUrl(url)
 	local value = tostring(url or '')
 	local ref = sourceRef()
 	value = value:gsub('https://raw%.githubusercontent%.com/nalityemailperson%-create/New%-horizons/[^/]+/pistonware%-full/', function() return projectRawUrl('', ref) end)
-	value = value:gsub('https://gitlab%.com/pistonware/pistonware/%-/raw/main/', function() return protectedRawUrl(release.branch):gsub('/bedwars%.lua$', '/') end)
 	value = value:gsub('(/git/trees/)main', '%1'..release.branch)
 	value = value:gsub('([?&]sha=)main', '%1'..ref)
 	value = value:gsub('([?&]ref=)main', '%1'..ref)
@@ -631,16 +626,12 @@ local function rewriteProjectUrl(url)
 end
 
 shared.PistonwareRawUrl = projectRawUrl
-shared.PistonwareProtectedRawUrl = protectedRawUrl
 shared.PistonwareRewriteUrl = rewriteProjectUrl
 shared.PistonwareRelease = release
 shared.PistonwareTelemetry = telemetry
 shared.PistonwareChannel = release.channel
 if not isDeveloper then
 	shared.PistonwareDevHttpGet = function(url, nocache)
-		return game:HttpGet(rewriteProjectUrl(url), nocache)
-	end
-	shared.PistonwareDevProtectedHttpGet = function(url, nocache)
 		return game:HttpGet(rewriteProjectUrl(url), nocache)
 	end
 end
@@ -666,13 +657,9 @@ end
 local function downloadFile(path, func)
 	if not (release.cacheReady and hasContent(path)) then
 		local relPath = select(1, path:gsub('pistonware/', ''))
-		local isBedwars = relPath == 'games/bedwars.lua'
 		local content
 		for attempt = 1, 4 do
 			local suc, res = pcall(function()
-				if isBedwars then
-					return game:HttpGet(protectedRawUrl(), true)
-				end
 				return game:HttpGet(projectRawUrl(relPath), true)
 			end)
 			if suc and res and res ~= '' and res ~= '404: Not Found' and (not path:find('%.lua$') or loadstring(res) ~= nil) then
@@ -1971,8 +1958,7 @@ inside the wait it used to follow, and on a warm cache it is finished before Rob
 
 Nothing in updateCachedFiles touches game state, which is what made the old ordering
 necessary in the first place -- it reads a GitHub tree and writes files into pistonware/.
-Both folders and authentication are already behind us, so the security ordering is intact:
-this still cannot start until a key has validated. ]]
+Both folders and release metadata are already behind us, so the startup ordering is intact. ]]
 local updateDone = isReload or isDeveloper
 if not updateDone then
 	task.spawn(function()

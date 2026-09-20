@@ -794,11 +794,6 @@ run(function()
 				entitylib.character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 			end
 		end,
-		kick = function(args)
-			task.spawn(function()
-				lplr:Kick(table.concat(args, ' '))
-			end)
-		end,
 		kill = function()
 			if entitylib.isAlive then
 				entitylib.character.Humanoid:ChangeState(Enum.HumanoidStateType.Dead)

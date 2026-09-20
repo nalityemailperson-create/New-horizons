@@ -11390,61 +11390,40 @@ local function downloadBedwars()
         return res, nil, localFunc
     end
 
-    local lastFailure
-    for attempt = 1, 4 do
-        local suc, res = pcall(function()
-            local protectedUrl = shared.PistonwareProtectedRawUrl
-            return type(protectedUrl) == 'function' and game:HttpGet(protectedUrl(), true)
-                or game:HttpGet('https://gitlab.com/pistonware/pistonware/-/raw/main/bedwars.lua', true)
-        end)
-        --[[ compile check: during an outage HttpGet can hand back the 503/error page as the body,
-        which the ~=''/'404' tests would accept ]]
-        if suc and type(res) == 'string' and res ~= '' and res ~= '404: Not Found' then
-            local chunkName = string.format('bedwars.network.%d', attempt)
-            local networkFunc, compileError = compileBedwarsSource(res, chunkName)
-            if networkFunc then return res end
-            lastFailure = bootFailure('bedwars.network.compile', compileError)
-        else
-            lastFailure = bootFailure('bedwars.download', suc and 'empty or missing BedWars payload' or res)
-        end
-        if attempt < 4 then
-            task.wait(attempt)
-        end
-    end
-
-    return nil, lastFailure or bootFailure('bedwars.download', 'the protected payload could not be downloaded')
+	return nil, bootFailure('bedwars.optional', 'the optional BedWars payload is not bundled')
 end
 
 local bedwarsSource, bedwarsFailure, bedwarsCompiled = downloadBedwars()
 if not bedwarsSource then
     local failure = bedwarsFailure or bootFailure('bedwars.download', 'no usable BedWars payload')
-	bufferCall('error', failure.stage, failure.error)
+	bufferCall('warn', failure.stage, failure.error..' -- continuing with the checked-in adapter')
     pcall(function()
-        vape:CreateNotification('Vape', 'BedWars modules could not be loaded ('..failure.stage..'). Rejoin the game to retry.', 30, 'alert')
+        vape:CreateNotification('Vape', 'Optional BedWars payload unavailable; using the checked-in adapter.', 10, 'warning')
     end)
-    return failure
 end
 
-local bedwarsFn, bedwarsCompileError = bedwarsCompiled, nil
-if not bedwarsFn then
-    bedwarsFn, bedwarsCompileError = compileBedwarsSource(bedwarsSource, 'bedwars')
-end
-if not bedwarsFn then
-    local failure = bootFailure('bedwars.compile', bedwarsCompileError)
-	bufferCall('error', failure.stage, failure.error)
-    pcall(function()
-        vape:CreateNotification('Vape', 'Combat modules could not be loaded (bedwars.compile). Rejoin the game to retry.', 30, 'alert')
-    end)
-    return failure
-end
+if bedwarsSource then
+	local bedwarsFn, bedwarsCompileError = bedwarsCompiled, nil
+	if not bedwarsFn then
+		bedwarsFn, bedwarsCompileError = compileBedwarsSource(bedwarsSource, 'bedwars')
+	end
+	if not bedwarsFn then
+		local failure = bootFailure('bedwars.compile', bedwarsCompileError)
+		bufferCall('error', failure.stage, failure.error)
+		pcall(function()
+			vape:CreateNotification('Vape', 'Combat modules could not be loaded (bedwars.compile). Rejoin the game to retry.', 30, 'alert')
+		end)
+		return failure
+	end
 
-local ok, result = xpcall(bedwarsFn, errorTrace)
-if not ok then
-    local failure = bootFailure('bedwars.payload.execute', result)
-	bufferCall('error', failure.stage, failure.error)
-    return failure
+	local ok, result = xpcall(bedwarsFn, errorTrace)
+	if not ok then
+		local failure = bootFailure('bedwars.payload.execute', result)
+		bufferCall('error', failure.stage, failure.error)
+		return failure
+	end
+	if type(result) == 'table' and result.PistonwareBootFailure then
+		return result
+	end
+	return result
 end
-if type(result) == 'table' and result.PistonwareBootFailure then
-    return result
-end
-return result
