@@ -887,9 +887,27 @@ end
 --[[ Shaped like the old contents/ response ({type = 'file', path = ...}) so the downloader below
 did not have to change. Pinned by construction: a tree IS a snapshot, so there is no window
 where the listing and the file contents disagree. ]]
+local fallbackProfileFiles = {
+	'profiles/2619619496.gui.txt',
+	'profiles/blatant17625359962.txt',
+	'profiles/blatant6872265039.txt',
+	'profiles/blatant6872274481.txt',
+	'profiles/default6872265039.txt',
+	'profiles/default6872274481.txt',
+	'profiles/gui.txt',
+	'profiles/legit6872265039.txt',
+	'profiles/legit6872274481.txt'
+}
+
 local function fetchProfilesListing()
 	local tree = fetchRepoTree()
-	if not tree then return nil end
+	if not tree then
+		local files = {}
+		for _, path in fallbackProfileFiles do
+			table.insert(files, {type = 'file', path = path})
+		end
+		return files
+	end
 	local files = {}
 	for _, v in tree.tree do
 		local path = projectPath(v.path)

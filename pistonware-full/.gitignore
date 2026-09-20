@@ -4,7 +4,7 @@ __pycache__/
 /dev/
 games/bedwars.lua
 games/bedwarsFix.lua
-/profiles/
+/profiles/whitelist.json
 .DS_Store
 loaderdev.lua
 pistonware_loader.log
